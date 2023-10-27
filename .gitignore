@@ -128,3 +128,7 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+datasets
+datasets/
+*.sh
