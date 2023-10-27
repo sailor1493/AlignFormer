@@ -1,6 +1,6 @@
 # general settings
 name: SR_Pretrain
-folder_suffix: AF
+folder_suffix: SRGAN
 model_type: SRModel
 scale: 1
 num_gpu: 4
@@ -70,7 +70,7 @@ train:
 
   # losses
   pixel_opt:
-    type: ModifiedMSELoss
+    type: MSELoss
     loss_weight: !!float 1.0
     reduction: mean
 
