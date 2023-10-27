@@ -2,7 +2,7 @@ addict
 future
 lmdb
 matplotlib
-mmcv>=0.6
+mmcv-full
 numpy
 opencv-python
 pyyaml
@@ -12,3 +12,10 @@ tb-nightly
 torch>=1.7
 torchvision
 yapf
+rawpy
+imageio
+cv2
+cupy
+lpips
+torchinfo
+torchsummaryX
