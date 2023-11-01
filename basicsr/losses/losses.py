@@ -39,7 +39,6 @@ def modified_mse_loss(pred, target, eps=1e-3):
     return ((pred - target) / (weight + eps)) ** 2
 
 
-
 @LOSS_REGISTRY.register()
 class ECFNetLoss(nn.Module):
     """L1 (mean absolute error, MAE) loss.
@@ -71,10 +70,13 @@ class ECFNetLoss(nn.Module):
                 weights. Default: None.
         """
         l1_loss_value = l1_loss(pred, target, weight, reduction=self.reduction)
-        charbonnier_loss_value = charbonnier_loss(pred, target, weight, reduction=self.reduction)
-            
-        return self.loss_weight * (l1_loss_value + self.lambda_value * charbonnier_loss_value)
+        charbonnier_loss_value = charbonnier_loss(
+            pred, target, weight, reduction=self.reduction
+        )
 
+        return self.loss_weight * (
+            l1_loss_value + self.lambda_value * charbonnier_loss_value
+        )
 
 
 @LOSS_REGISTRY.register()
@@ -428,7 +430,7 @@ class PerceptualLoss(nn.Module):
         else:
             raise NotImplementedError(f"{criterion} criterion has not been supported.")
 
-    def forward(self, x, gt):
+    def forward(self, x, gt, weight=None):
         """Forward function.
 
         Args:
@@ -439,6 +441,9 @@ class PerceptualLoss(nn.Module):
             Tensor: Forward results.
         """
         # extract vgg features
+        if weight:
+            x = x * weight
+            gt = gt * weight
         x_features = self.vgg(x)
         gt_features = self.vgg(gt.detach())
 
