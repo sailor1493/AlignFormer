@@ -13,7 +13,7 @@ datasets:
   train:
     name: syn_pair_train
     type: TripleImageDataset
-    dataroot_gt: datasets/iphone_dataset/ref/train/
+    dataroot_gt: datasets/iphone_dataset/AlignFormer/train/
     dataroot_ref: datasets/iphone_dataset/mask/train/
     dataroot_lq: datasets/iphone_dataset/lq/train/
     psf_path: "/home/n2/chanwoo/benchmark-alignformer/AlignFormer/sit-train-psf.npy"
@@ -24,8 +24,8 @@ datasets:
       type: disk
 
     gt_size: 256
-    use_flip: true
-    use_rot: true
+    use_flip: false
+    use_rot: false
 
     # data loader
     use_shuffle: true
@@ -37,7 +37,7 @@ datasets:
   val:
     name: syn_pair_val
     type: TripleImageDataset
-    dataroot_gt: datasets/iphone_dataset/ref/test_sub/
+    dataroot_gt: datasets/iphone_dataset/AlignFormer/test_sub/
     dataroot_ref: datasets/iphone_dataset/mask/test_sub/
     dataroot_lq: datasets/iphone_dataset/lq/test_sub/
     psf_path: "/home/n2/chanwoo/benchmark-alignformer/AlignFormer/sit-train-psf.npy"
