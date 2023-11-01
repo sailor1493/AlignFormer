@@ -151,8 +151,7 @@ class ECFNetModel(BaseModel):
             for lq, gt, weight in zip(self.output, gts, weights):
                 l_pix = self.cri_pix(lq, gt, weight=weight)
                 l_total += l_pix
-            loss_dict["l_pix"] = l_pix
-            loss_dict["l_pix"] = l_pix
+            loss_dict["l_pix"] = l_total
         # perceptual loss
         if self.cri_perceptual:
             raise NotImplementedError("Perceptual loss is not implemented in ECFNet.")
