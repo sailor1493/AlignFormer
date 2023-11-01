@@ -99,7 +99,7 @@ class DISCNetModel(BaseModel):
         mask = self.mask if hasattr(self, "mask") else None
         # pixel loss
         if self.cri_pix:
-            l_pix = self.cri_pix(self.output, self.gt, mask)
+            l_pix = self.cri_pix(self.output, self.gt, weight=mask)
             l_total += l_pix
             loss_dict["l_pix"] = l_pix
         # perceptual loss
