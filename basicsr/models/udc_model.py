@@ -334,11 +334,6 @@ class UDCModel(BaseModel):
             self.nondist_validation(dataloader, current_iter, tb_logger, save_img)
 
     def nondist_validation(self, dataloader, current_iter, tb_logger, save_img):
-        def _clamp(tensor, clamp_opts):
-            if clamp_opts:
-                return torch.clamp(tensor, clamp_opts["min"], clamp_opts["max"])
-            return tensor
-
         def _save_4ch_npy_to_img(
             img_npy, img_path, dng_info, in_pxl=255.0, max_pxl=1023.0
         ):
