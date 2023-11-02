@@ -124,7 +124,6 @@ class SRModel(BaseModel):
             weight = self.mask
         else:
             weight = None
-        assert weight is not None
 
         l_total = 0
         loss_dict = OrderedDict()
