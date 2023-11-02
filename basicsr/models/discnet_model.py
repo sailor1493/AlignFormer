@@ -37,6 +37,12 @@ class DISCNetModel(BaseModel):
         if load_path is not None:
             self.load_network(self.net_g, load_path, self.opt["path"]["strict_load"])
 
+        # load psf code
+        psf_path = self.opt["path"].get("psf_path", None)
+        if psf_path is not None:
+            npy_file = np.load(psf_path).astype(np.float32)
+            self.psf_code = torch.from_numpy(npy_file)[..., None, None]
+
         if self.is_train:
             self.init_training_settings()
 
