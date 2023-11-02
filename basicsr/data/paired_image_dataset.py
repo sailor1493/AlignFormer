@@ -10,6 +10,9 @@ from basicsr.data.transforms import augment, paired_random_crop
 from basicsr.utils import FileClient, imfrombytes, img2tensor
 from basicsr.utils.registry import DATASET_REGISTRY
 
+import numpy as np
+import torch
+
 
 @DATASET_REGISTRY.register()
 class PairedImageDataset(data.Dataset):
@@ -75,6 +78,9 @@ class PairedImageDataset(data.Dataset):
             self.paths = paired_paths_from_folder(
                 [self.lq_folder, self.gt_folder], ["lq", "gt"], self.filename_tmpl
             )
+        if "psf_path" in opt:
+            npy_file = np.load(opt["psf_path"]).astype(np.float32)
+            self.psf_code = torch.from_numpy(npy_file)[..., None, None]
 
     def __getitem__(self, index):
         if self.file_client is None:
@@ -111,7 +117,10 @@ class PairedImageDataset(data.Dataset):
             normalize(img_lq, self.mean, self.std, inplace=True)
             normalize(img_gt, self.mean, self.std, inplace=True)
 
-        return {"lq": img_lq, "gt": img_gt, "lq_path": lq_path, "gt_path": gt_path}
+        payload = {"lq": img_lq, "gt": img_gt, "lq_path": lq_path, "gt_path": gt_path}
+        if "psf_path" in self.opt:
+            payload["psf_code"] = self.psf_code
+        return payload
 
     def __len__(self):
         return len(self.paths)
