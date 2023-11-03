@@ -23,7 +23,7 @@ def reduce_loss(loss, reduction):
         return loss.sum()
 
 
-def weight_reduce_loss(loss, weight=None, reduction='mean'):
+def weight_reduce_loss(loss, weight=None, reduction="mean"):
     """Apply element-wise weight and reduce loss.
 
     Args:
@@ -37,15 +37,16 @@ def weight_reduce_loss(loss, weight=None, reduction='mean'):
     """
     # if weight is specified, apply element-wise weight
     if weight is not None:
-        assert weight.dim() == loss.dim(), 'error 1'
-        assert weight.size(1) == 1 or weight.size(1) == loss.size(1), 'error 2'
+        assert weight.dim() == loss.dim(), "error 1"
+        assert weight.size(1) == 1 or weight.size(1) == loss.size(1), "error 2"
+        weight = weight.detach()
         loss = loss * weight
 
     # if weight is not specified or reduction is sum, just reduce the loss
-    if weight is None or reduction == 'sum':
+    if weight is None or reduction == "sum":
         loss = reduce_loss(loss, reduction)
     # if reduction is mean, then compute mean over weight region
-    elif reduction == 'mean':
+    elif reduction == "mean":
         if weight.size(1) > 1:
             weight = weight.sum()
         else:
@@ -87,7 +88,7 @@ def weighted_loss(loss_func):
     """
 
     @functools.wraps(loss_func)
-    def wrapper(pred, target, weight=None, reduction='mean', **kwargs):
+    def wrapper(pred, target, weight=None, reduction="mean", **kwargs):
         # get element-wise loss
         loss = loss_func(pred, target, **kwargs)
         loss = weight_reduce_loss(loss, weight, reduction)
@@ -96,8 +97,10 @@ def weighted_loss(loss_func):
     return wrapper
 
 
-def log_sinkhorn_iterations(Z: torch.Tensor, log_mu: torch.Tensor, log_nu: torch.Tensor, iters: int) -> torch.Tensor:
-    """ Perform Sinkhorn Normalization in Log-space for stability"""
+def log_sinkhorn_iterations(
+    Z: torch.Tensor, log_mu: torch.Tensor, log_nu: torch.Tensor, iters: int
+) -> torch.Tensor:
+    """Perform Sinkhorn Normalization in Log-space for stability"""
     u, v = torch.zeros_like(log_mu), torch.zeros_like(log_nu)
     for _ in range(iters):
         u = log_mu - torch.logsumexp(Z + v.unsqueeze(1), dim=2)
@@ -105,8 +108,10 @@ def log_sinkhorn_iterations(Z: torch.Tensor, log_mu: torch.Tensor, log_nu: torch
     return Z + u.unsqueeze(2) + v.unsqueeze(1)
 
 
-def log_optimal_transport(scores: torch.Tensor, alpha: torch.Tensor, iters: int) -> torch.Tensor:
-    """ Perform Differentiable Optimal Transport in Log-space for stability"""
+def log_optimal_transport(
+    scores: torch.Tensor, alpha: torch.Tensor, iters: int
+) -> torch.Tensor:
+    """Perform Differentiable Optimal Transport in Log-space for stability"""
     b, m, n = scores.shape
     one = scores.new_tensor(1)
     ms, ns = (m * one).to(scores), (n * one).to(scores)
@@ -115,10 +120,11 @@ def log_optimal_transport(scores: torch.Tensor, alpha: torch.Tensor, iters: int)
     bins1 = alpha.expand(b, 1, n)
     alpha = alpha.expand(b, 1, 1)
 
-    couplings = torch.cat([torch.cat([scores, bins0], -1),
-                           torch.cat([bins1, alpha], -1)], 1)
+    couplings = torch.cat(
+        [torch.cat([scores, bins0], -1), torch.cat([bins1, alpha], -1)], 1
+    )
 
-    norm = - (ms + ns).log()
+    norm = -(ms + ns).log()
     log_mu = torch.cat([norm.expand(m), ns.log()[None] + norm])
     log_nu = torch.cat([norm.expand(n), ms.log()[None] + norm])
     log_mu, log_nu = log_mu[None].expand(b, -1), log_nu[None].expand(b, -1)
