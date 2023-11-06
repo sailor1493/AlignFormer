@@ -70,6 +70,12 @@ class DISCNetModel(BaseModel):
         else:
             self.clip_function = lambda x: x
 
+        clamp = train_opt.get("clamp")
+        if clamp:
+            self.clamp_function = partial(torch.clamp, min=0.0, max=1.0)
+        else:
+            self.clamp_function = lambda x: x
+
         # set up optimizers and schedulers
         self.setup_optimizers()
         self.setup_schedulers()
@@ -103,6 +109,7 @@ class DISCNetModel(BaseModel):
     def optimize_parameters(self, current_iter):
         self.optimizer_g.zero_grad()
         self.output = self.net_g(self.lq, self.psf_code)
+        self.output = self.clamp_function(self.output)
 
         l_total = 0
         loss_dict = OrderedDict()
@@ -136,6 +143,7 @@ class DISCNetModel(BaseModel):
                 self.output = self.test_crop9()
             else:
                 self.output = self.net_g(self.lq, self.psf_code)
+                self.output = self.clamp_function(self.output)
         self.net_g.train()
 
     def test_crop9(self):
@@ -174,6 +182,7 @@ class DISCNetModel(BaseModel):
         imM = torch.cat((imML, imMM, imMR), 3)
         imB = torch.cat((imBL, imBM, imBR), 3)
         output_cat = torch.cat((imT, imM, imB), 2)
+        output_cat = self.clamp_function(output_cat)
         return output_cat
 
     def dist_validation(self, dataloader, current_iter, tb_logger, save_img):
