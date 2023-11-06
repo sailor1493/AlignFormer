@@ -1,0 +1,127 @@
+# Modified SRResNet w/o BN from:
+# Photo-Realistic Single Image Super-Resolution Using a Generative Adversarial Network
+
+# general settings
+name: DISCNet-AlignFormer-Detach
+model_type: DISCNetModel
+scale: 1
+num_gpu: 4
+manual_seed: 10
+
+# dataset and data loader settings
+datasets:
+  train:
+    name: syn_pair_train
+    type: TripleImageDataset
+    dataroot_gt: datasets/iphone_dataset/AlignFormer/train/
+    dataroot_ref: datasets/iphone_dataset/mask/train/
+    dataroot_lq: datasets/iphone_dataset/lq/train/
+    psf_path: "/home/n2/chanwoo/benchmark-alignformer/AlignFormer/sit-train-psf.npy"
+
+    meta_info_file: ~
+    filename_tmpl: '{}'
+    io_backend:
+      type: disk
+
+    gt_size: 256
+    use_flip: false
+    use_rot: false
+
+    # data loader
+    use_shuffle: true
+    num_worker_per_gpu: 4
+    batch_size_per_gpu: 4
+    dataset_enlarge_ratio: 10
+    prefetch_mode: ~
+
+  val:
+    name: syn_pair_val
+    type: TripleImageDataset
+    dataroot_gt: datasets/iphone_dataset/AlignFormer/test_sub/
+    dataroot_ref: datasets/iphone_dataset/mask/test_sub/
+    dataroot_lq: datasets/iphone_dataset/lq/test_sub/
+    psf_path: "/home/n2/chanwoo/benchmark-alignformer/AlignFormer/sit-train-psf.npy"
+
+    filename_tmpl: '{}'
+    io_backend:
+      type: disk
+
+# network structures
+network_g:
+  type: DISCNet
+  in_nc: 3
+  out_nc: 3
+  nf: 32
+  ns: 3
+  multi_scale: true
+  kernel_cond: img-psf
+  psf_nc: 5
+  kpn_sz: 5
+
+# path
+path:
+  pretrain_model_g: ~
+  strict_load: true
+  resume_state: ~
+
+# training settings
+train:
+  optim_g:
+    type: Adam
+    lr: !!float 2e-4
+    weight_decay: 0
+    betas: [0.9, 0.99]
+
+  scheduler:
+    type: CosineAnnealingRestartLR
+    periods: [200000, 200000, 200000, 200000, 200000]
+    restart_weights: [1, 1, 1, 1, 1]
+    eta_min: !!float 1e-7
+
+  total_iter: 1000000
+  warmup_iter: -1  # no warm up
+
+  # losses
+  pixel_opt:
+    type: L1Loss
+    loss_weight: !!float 1.0
+    reduction: mean
+  perceptual_opt:
+    type: PerceptualLoss
+    layer_weights:
+      'conv5_4': 1  # before relu
+    vgg_type: vgg19
+    use_input_norm: true
+    perceptual_weight: !!float 1e-2
+    style_weight: 0
+    range_norm: false
+    criterion: l1
+
+# validation settings
+val:
+  val_freq: !!float 5e4
+  save_img: true
+
+  metrics:
+    psnr: # metric name, can be arbitrary
+      type: calculate_psnr
+      crop_border: 0
+      test_y_channel: false
+    ssim:
+      type: calculate_ssim
+      crop_border: 0
+      test_y_channel: false
+
+# logging settings
+logger:
+  print_freq: 250
+  save_checkpoint_freq: !!float 5e4
+  use_tb_logger: true
+  wandb:
+    project: ~
+    resume_id: ~
+
+# dist training settings
+dist_params:
+  backend: nccl
+  port: 29015
