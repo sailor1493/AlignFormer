@@ -12,6 +12,8 @@ from basicsr.utils import get_root_logger, imwrite, tensor2img
 from basicsr.utils import USMSharp
 from basicsr.utils.registry import MODEL_REGISTRY
 from .base_model import BaseModel
+import torch.nn.utils as tutils
+from functools import partial
 
 
 @MODEL_REGISTRY.register()
@@ -89,6 +91,13 @@ class SRModel(BaseModel):
         # set up optimizers and schedulers
         self.setup_optimizers()
         self.setup_schedulers()
+        clip = train_opt.get("clip")
+        if clip:
+            self.clip_function = partial(
+                tutils.clip_grad_norm_, max_norm=clip, foreach=True
+            )
+        else:
+            self.clip_function = lambda x: x
 
     def setup_optimizers(self):
         train_opt = self.opt["train"]
@@ -143,6 +152,7 @@ class SRModel(BaseModel):
                 loss_dict["l_style"] = l_style
 
         l_total.backward()
+        self.clip_function(self.net_g.parameters())
         self.optimizer_g.step()
 
         self.log_dict = self.reduce_loss_dict(loss_dict)

@@ -13,6 +13,8 @@ from basicsr.metrics import calculate_metric
 from basicsr.utils import get_root_logger, imwrite, tensor2img, tensor2npy
 from basicsr.utils.registry import MODEL_REGISTRY
 from .base_model import BaseModel
+import torch.nn.utils as tutils
+from functools import partial
 
 from random import random
 
@@ -95,6 +97,13 @@ class ECFNetModel(BaseModel):
 
         if self.cri_pix is None and self.cri_perceptual is None:
             raise ValueError("Both pixel and perceptual losses are None.")
+        clip = train_opt.get("clip")
+        if clip:
+            self.clip_function = partial(
+                tutils.clip_grad_norm_, max_norm=clip, foreach=True
+            )
+        else:
+            self.clip_function = lambda x: x
 
         # set up optimizers and schedulers
         self.setup_optimizers()
@@ -157,6 +166,7 @@ class ECFNetModel(BaseModel):
             raise NotImplementedError("Perceptual loss is not implemented in ECFNet.")
 
         l_total.backward()
+        self.clip_function(self.net_g.parameters())
         self.optimizer_g.step()
 
         self.log_dict = self.reduce_loss_dict(loss_dict)

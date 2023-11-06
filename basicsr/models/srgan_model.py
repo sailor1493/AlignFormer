@@ -6,6 +6,8 @@ from basicsr.losses import build_loss
 from basicsr.utils import get_root_logger
 from basicsr.utils.registry import MODEL_REGISTRY
 from .sr_model import SRModel
+import torch.nn.utils as tutils
+from functools import partial
 
 
 @MODEL_REGISTRY.register()
@@ -77,6 +79,13 @@ class SRGANModel(SRModel):
         # set up optimizers and schedulers
         self.setup_optimizers()
         self.setup_schedulers()
+        clip = train_opt.get("clip")
+        if clip:
+            self.clip_function = partial(
+                tutils.clip_grad_norm_, max_norm=clip, foreach=True
+            )
+        else:
+            self.clip_function = lambda x: x
 
     def setup_optimizers(self):
         train_opt = self.opt["train"]
@@ -133,6 +142,7 @@ class SRGANModel(SRModel):
             loss_dict["l_g_gan"] = l_g_gan
 
             l_g_total.backward()
+            self.clip_function(self.net_g.parameters())
             self.optimizer_g.step()
 
         # optimize net_d
@@ -152,6 +162,7 @@ class SRGANModel(SRModel):
         loss_dict["l_d_fake"] = l_d_fake
         loss_dict["out_d_fake"] = torch.mean(fake_d_pred.detach())
         l_d_fake.backward()
+        self.clip_function(self.net_d.parameters())
         self.optimizer_d.step()
 
         self.log_dict = self.reduce_loss_dict(loss_dict)
