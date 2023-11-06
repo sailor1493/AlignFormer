@@ -442,6 +442,7 @@ class PerceptualLoss(nn.Module):
         """
         # extract vgg features
         if weight:
+            weight = weight.detach()
             x = x * weight
             gt = gt * weight
         x_features = self.vgg(x)
