@@ -78,7 +78,7 @@ class ECFNetLoss(nn.Module):
             weight (Tensor, optional): of shape (N, C, H, W). Element-wise
                 weights. Default: None.
         """
-        if weight:
+        if weight is not None:
             weight = weight.detach()
             fft_lq = abs(torch.fft.fftn(weight * pred, dim=(-2, -1)))
             fft_gt = abs(torch.fft.fftn(weight * target, dim=(-2, -1)))
@@ -88,7 +88,7 @@ class ECFNetLoss(nn.Module):
 
         freq_domain = F.l1_loss(fft_lq, fft_gt, reduction=self.reduction)
 
-        if weight:
+        if weight is not None:
             charbonnier_loss = self.rd_func(
                 torch.sqrt((pred - target) ** 2 + self.eps) * weight
             )
