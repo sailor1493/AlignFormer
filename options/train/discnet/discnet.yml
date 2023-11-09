@@ -2,7 +2,7 @@
 # Photo-Realistic Single Image Super-Resolution Using a Generative Adversarial Network
 
 # general settings
-name: DISCNet-AlignFormer
+name: DISCNet-AlignFormer-fixedLoss
 model_type: DISCNetModel
 scale: 1
 num_gpu: 4
