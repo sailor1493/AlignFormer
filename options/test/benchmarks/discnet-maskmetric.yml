@@ -1,0 +1,56 @@
+# Modified SRResNet w/o BN from:
+# Photo-Realistic Single Image Super-Resolution Using a Generative Adversarial Network
+
+# general settings
+name: DISCNet-AlignFormer-MaskMetric
+model_type: DISCNetModel
+scale: 1
+num_gpu: 4
+manual_seed: 10
+
+# dataset and data loader settings
+datasets:
+  test:
+    name: syn_pair_val
+    type: TripleImageDataset
+    dataroot_gt: datasets/iphone_dataset/AlignFormer/test_sub/
+    dataroot_ref: datasets/iphone_dataset/mask/test_sub/
+    dataroot_lq: datasets/iphone_dataset/lq/test_sub/
+    psf_path: "/home/n2/chanwoo/benchmark-alignformer/AlignFormer/sit-train-psf.npy"
+
+    filename_tmpl: '{}'
+    io_backend:
+      type: disk
+
+# network structures
+network_g:
+  type: DISCNet
+  in_nc: 3
+  out_nc: 3
+  nf: 32
+  ns: 3
+  multi_scale: true
+  kernel_cond: img-psf
+  psf_nc: 5
+  kpn_sz: 5
+
+# path
+path:
+  pretrain_model_g: /home/n2/chanwoo/benchmark-alignformer/AlignFormer/to_transfer/discnet-best.pth
+  strict_load: true
+  resume_state: ~
+
+# validation settings
+val:
+  save_img: true
+  suffix: ~
+
+  metrics:
+    psnr: # metric name, can be arbitrary
+      type: masked_psnr
+      crop_border: 0
+      test_y_channel: false
+    ssim:
+      type: calculate_ssim
+      crop_border: 0
+      test_y_channel: false

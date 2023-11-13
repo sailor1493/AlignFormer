@@ -1,0 +1,48 @@
+# general settings
+name: UDCUNet-Test
+model_type: UDCModel
+scale: 1
+num_gpu: auto
+manual_seed: 10
+
+# dataset and data loader settings
+datasets:
+  test:
+    name: test_set
+    type: TripleImageDataset
+    dataroot_gt: datasets/iphone_dataset/AlignFormer/test_sub/
+    dataroot_ref: datasets/iphone_dataset/mask/test_sub/
+    dataroot_lq: datasets/iphone_dataset/lq/test_sub/
+    filename_tmpl: '{}'
+    io_backend:
+      type: disk
+
+#### network structures
+network_g:
+  type: UDCUNet
+  nf: 32
+  depths: [2,2,2,8,2,2,2]
+  DyK_size: 3
+
+# path
+path:
+  pretrain_network_g: /home/n2/chanwoo/benchmark-alignformer/AlignFormer/to_transfer/udcunet-best.pth
+#  param_key_g: 'params_ema'
+  strict_load_g: true
+  resume_state: ~
+
+# validation settings
+val:
+  save_img: true
+  suffix: ~
+  
+
+  metrics:
+    psnr: # metric name, can be arbitrary
+      type: calculate_psnr
+      crop_border: 0
+      test_y_channel: false
+    ssim:
+      type: calculate_ssim
+      crop_border: 0
+      test_y_channel: false
