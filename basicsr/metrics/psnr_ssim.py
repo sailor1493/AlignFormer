@@ -6,7 +6,9 @@ from basicsr.utils.registry import METRIC_REGISTRY
 
 
 @METRIC_REGISTRY.register()
-def calculate_psnr(img1, img2, crop_border, input_order='HWC', test_y_channel=False):
+def calculate_psnr(
+    img1, img2, crop_border, mask=None, input_order="HWC", test_y_channel=False
+):
     """Calculate PSNR (Peak Signal-to-Noise Ratio).
 
     Ref: https://en.wikipedia.org/wiki/Peak_signal-to-noise_ratio
@@ -24,9 +26,14 @@ def calculate_psnr(img1, img2, crop_border, input_order='HWC', test_y_channel=Fa
         float: psnr result.
     """
 
-    assert img1.shape == img2.shape, (f'Image shapes are differnet: {img1.shape}, {img2.shape}.')
-    if input_order not in ['HWC', 'CHW']:
-        raise ValueError(f'Wrong input_order {input_order}. Supported input_orders are ' '"HWC" and "CHW"')
+    assert (
+        img1.shape == img2.shape
+    ), f"Image shapes are differnet: {img1.shape}, {img2.shape}."
+    if input_order not in ["HWC", "CHW"]:
+        raise ValueError(
+            f"Wrong input_order {input_order}. Supported input_orders are "
+            '"HWC" and "CHW"'
+        )
     img1 = reorder_image(img1, input_order=input_order)
     img2 = reorder_image(img2, input_order=input_order)
     img1 = img1.astype(np.float64)
@@ -40,10 +47,62 @@ def calculate_psnr(img1, img2, crop_border, input_order='HWC', test_y_channel=Fa
         img1 = to_y_channel(img1)
         img2 = to_y_channel(img2)
 
-    mse = np.mean((img1 - img2)**2)
+    mse = np.mean((img1 - img2) ** 2)
     if mse == 0:
-        return float('inf')
-    return 20. * np.log10(255. / np.sqrt(mse))
+        return float("inf")
+    return 20.0 * np.log10(255.0 / np.sqrt(mse))
+
+
+@METRIC_REGISTRY.register()
+def masked_psnr(
+    img1, img2, crop_border, mask=None, input_order="HWC", test_y_channel=False
+):
+    """Calculate PSNR (Peak Signal-to-Noise Ratio).
+
+    Ref: https://en.wikipedia.org/wiki/Peak_signal-to-noise_ratio
+
+    Args:
+        img1 (ndarray): Images with range [0, 255].
+        img2 (ndarray): Images with range [0, 255].
+        crop_border (int): Cropped pixels in each edge of an image. These
+            pixels are not involved in the PSNR calculation.
+        input_order (str): Whether the input order is 'HWC' or 'CHW'.
+            Default: 'HWC'.
+        test_y_channel (bool): Test on Y channel of YCbCr. Default: False.
+
+    Returns:
+        float: psnr result.
+    """
+
+    assert (
+        img1.shape == img2.shape
+    ), f"Image shapes are differnet: {img1.shape}, {img2.shape}."
+    assert (mask is not None, "Mask is not provided.")
+    if input_order not in ["HWC", "CHW"]:
+        raise ValueError(
+            f"Wrong input_order {input_order}. Supported input_orders are "
+            '"HWC" and "CHW"'
+        )
+    img1 = img1 * mask
+    img2 = img2 * mask
+    img1 = reorder_image(img1, input_order=input_order)
+    img2 = reorder_image(img2, input_order=input_order)
+    img1 = img1.astype(np.float64)
+    img2 = img2.astype(np.float64)
+
+    if crop_border != 0:
+        img1 = img1[crop_border:-crop_border, crop_border:-crop_border, ...]
+        img2 = img2[crop_border:-crop_border, crop_border:-crop_border, ...]
+
+    if test_y_channel:
+        img1 = to_y_channel(img1)
+        img2 = to_y_channel(img2)
+
+    weight_entries = np.sum(mask)
+    mse = np.sum((img1 - img2) ** 2) / weight_entries
+    if mse == 0:
+        return float("inf")
+    return 20.0 * np.log10(255.0 / np.sqrt(mse))
 
 
 def _ssim(img1, img2):
@@ -59,8 +118,8 @@ def _ssim(img1, img2):
         float: ssim result.
     """
 
-    C1 = (0.01 * 255)**2
-    C2 = (0.03 * 255)**2
+    C1 = (0.01 * 255) ** 2
+    C2 = (0.03 * 255) ** 2
 
     img1 = img1.astype(np.float64)
     img2 = img2.astype(np.float64)
@@ -76,12 +135,16 @@ def _ssim(img1, img2):
     sigma2_sq = cv2.filter2D(img2**2, -1, window)[5:-5, 5:-5] - mu2_sq
     sigma12 = cv2.filter2D(img1 * img2, -1, window)[5:-5, 5:-5] - mu1_mu2
 
-    ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
+    ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / (
+        (mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2)
+    )
     return ssim_map.mean()
 
 
 @METRIC_REGISTRY.register()
-def calculate_ssim(img1, img2, crop_border, input_order='HWC', test_y_channel=False):
+def calculate_ssim(
+    img1, img2, crop_border, mask=None, input_order="HWC", test_y_channel=False
+):
     """Calculate SSIM (structural similarity).
 
     Ref:
@@ -106,9 +169,14 @@ def calculate_ssim(img1, img2, crop_border, input_order='HWC', test_y_channel=Fa
         float: ssim result.
     """
 
-    assert img1.shape == img2.shape, (f'Image shapes are differnet: {img1.shape}, {img2.shape}.')
-    if input_order not in ['HWC', 'CHW']:
-        raise ValueError(f'Wrong input_order {input_order}. Supported input_orders are ' '"HWC" and "CHW"')
+    assert (
+        img1.shape == img2.shape
+    ), f"Image shapes are differnet: {img1.shape}, {img2.shape}."
+    if input_order not in ["HWC", "CHW"]:
+        raise ValueError(
+            f"Wrong input_order {input_order}. Supported input_orders are "
+            '"HWC" and "CHW"'
+        )
     img1 = reorder_image(img1, input_order=input_order)
     img2 = reorder_image(img2, input_order=input_order)
     img1 = img1.astype(np.float64)
