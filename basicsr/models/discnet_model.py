@@ -38,7 +38,7 @@ class DISCNetModel(BaseModel):
         load_path = self.opt["path"].get("pretrain_model_g", None)
         if load_path is not None:
             self.load_network(self.net_g, load_path, self.opt["path"]["strict_load"])
-
+        self.clamp_function = lambda x: x
         if self.is_train:
             self.init_training_settings()
 
@@ -73,8 +73,6 @@ class DISCNetModel(BaseModel):
         clamp = train_opt.get("clamp")
         if clamp:
             self.clamp_function = partial(torch.clamp, min=0.0, max=1.0)
-        else:
-            self.clamp_function = lambda x: x
 
         # set up optimizers and schedulers
         self.setup_optimizers()
@@ -121,7 +119,7 @@ class DISCNetModel(BaseModel):
             loss_dict["l_pix"] = l_pix
         # perceptual loss
         if self.cri_perceptual:
-            l_percep, l_style = self.cri_perceptual(self.output, self.gt)
+            l_percep, l_style = self.cri_perceptual(self.output, self.gt, weight=mask)
             if l_percep is not None:
                 l_total += l_percep
                 loss_dict["l_percep"] = l_percep
@@ -219,6 +217,9 @@ class DISCNetModel(BaseModel):
                 # gt_img = tensor2raw([visuals['gt']]) # replace for raw data.
                 gt_img = tensor2img([visuals["gt"]])
                 del self.gt
+            if "mask" in visuals:
+                mask = tensor2img([visuals["mask"]])
+                del self.mask
 
             # tentative for out of GPU memory
             del self.lq
@@ -228,7 +229,7 @@ class DISCNetModel(BaseModel):
             image_metric = {}
 
             if with_metrics:
-                metric_data = {"img1": sr_img, "img2": gt_img}
+                metric_data = {"img1": sr_img, "img2": gt_img, "mask": mask}
                 # calculate metrics
                 for name, opt_ in self.opt["val"]["metrics"].items():
                     _metric = calculate_metric(metric_data, opt_)
@@ -312,6 +313,8 @@ class DISCNetModel(BaseModel):
         out_dict["result"] = self.output.detach().cpu()
         if hasattr(self, "gt"):
             out_dict["gt"] = self.gt.detach().cpu()
+        if hasattr(self, "mask"):
+            out_dict["mask"] = self.mask.detach().cpu()
         return out_dict
 
     def save(self, epoch, current_iter):
