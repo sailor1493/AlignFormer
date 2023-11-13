@@ -12,10 +12,10 @@ from basicsr.utils.registry import ARCH_REGISTRY
 class DISCNet(nn.Module):
     def __init__(
         self,
-        in_nc,
-        out_nc,
-        nf,
-        ns,
+        in_nc=3,
+        out_nc=3,
+        nf=32,
+        ns=3,
         kpn_sz=5,
         norm_type=None,
         act_type="leakyrelu",
@@ -23,7 +23,7 @@ class DISCNet(nn.Module):
         kernel_size=3,
         kernel_cond=None,
         psf_nc=5,
-        multi_scale=False,
+        multi_scale=True,
     ):
         super().__init__()
         self.ns = ns
