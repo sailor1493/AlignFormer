@@ -55,7 +55,7 @@ class ECFNetLoss(nn.Module):
 
     def __init__(self, loss_weight=1.0, lambda_value=0.5, reduction="mean"):
         super(ECFNetLoss, self).__init__()
-        if reduction not in ["mean", "sum"]:
+        if reduction not in ["mean"]:
             raise ValueError(
                 f"Unsupported reduction mode: {reduction}. "
                 f"Supported ones are: ['mean', 'sum']"
@@ -65,10 +65,6 @@ class ECFNetLoss(nn.Module):
         self.lambda_value = lambda_value
         self.reduction = reduction
         self.eps = 1e-4
-        if self.reduction == "mean":
-            self.rd_func = torch.mean
-        else:
-            self.rd_func = torch.sum
 
     def forward(self, pred, target, weight=None, **kwargs):
         """
@@ -89,11 +85,16 @@ class ECFNetLoss(nn.Module):
         freq_domain = F.l1_loss(fft_lq, fft_gt, reduction=self.reduction)
 
         if weight is not None:
+            weight_sum = weight.sum()
             charbonnier_loss = self.rd_func(
                 torch.sqrt((pred - target) ** 2 + self.eps) * weight
             )
+            if weight_sum < 1e-3:
+                charbonnier_loss = charbonnier_loss.mean()
+            else:
+                charbonnier_loss = charbonnier_loss / weight_sum
         else:
-            charbonnier_loss = self.rd_func(torch.sqrt((pred - target) ** 2 + self.eps))
+            charbonnier_loss = torch.sqrt((pred - target) ** 2 + self.eps).mean()
 
         return self.loss_weight * (charbonnier_loss + self.lambda_value * freq_domain)
 
@@ -130,7 +131,12 @@ class L1Loss(nn.Module):
         if weight is None:
             return self.loss_weight * F.l1_loss(pred, target, reduction=self.reduction)
         weight = weight.detach()
-        return self.loss_weight * torch.abs((pred - target) * weight).mean()
+        weight_sum = weight.sum()
+
+        # in rare case where weight_sum is 0, use mean to avoid nan loss
+        if weight_sum < 1e-3:
+            return self.loss_weight * F.l1_loss(pred, target, reduction=self.reduction)
+        return self.loss_weight * torch.abs((pred - target) * weight).sum() / weight_sum
 
 
 @LOSS_REGISTRY.register()
@@ -322,7 +328,12 @@ class MSELoss(nn.Module):
         if weight is None:
             return self.loss_weight * F.mse_loss(pred, target, reduction=self.reduction)
         weight = weight.detach()
-        return self.loss_weight * torch.pow((pred - target) * weight, 2).mean()
+        weight_sum = weight.sum()
+        if weight_sum < 1e-3:
+            return self.loss_weight * F.mse_loss(pred, target, reduction=self.reduction)
+        return (
+            self.loss_weight * torch.pow((pred - target) * weight, 2).sum() / weight_sum
+        )
 
 
 @LOSS_REGISTRY.register()
@@ -430,6 +441,7 @@ class PerceptualLoss(nn.Module):
         perceptual_weight=1.0,
         style_weight=0.0,
         criterion="l1",
+        mask_input=True,
     ):
         super(PerceptualLoss, self).__init__()
         self.perceptual_weight = perceptual_weight
@@ -451,6 +463,7 @@ class PerceptualLoss(nn.Module):
             self.criterion = None
         else:
             raise NotImplementedError(f"{criterion} criterion has not been supported.")
+        self.mask_input = mask_input
 
     def forward(self, x, gt, weight=None):
         """Forward function.
@@ -463,57 +476,28 @@ class PerceptualLoss(nn.Module):
             Tensor: Forward results.
         """
         # extract vgg features
-        if weight:
+        if weight is not None:
             weight = weight.detach()
+        if self.mask_input and weight is not None:
             x = x * weight
             gt = gt * weight
         x_features = self.vgg(x)
         gt_features = self.vgg(gt.detach())
 
         # calculate perceptual loss
-        if self.perceptual_weight > 0:
-            percep_loss = 0
-            for k in x_features.keys():
-                if self.criterion_type == "fro":
-                    percep_loss += (
-                        torch.norm(x_features[k] - gt_features[k], p="fro")
-                        * self.layer_weights[k]
-                    )
-                else:
-                    percep_loss += (
-                        self.criterion(x_features[k], gt_features[k])
-                        * self.layer_weights[k]
-                    )
-            percep_loss *= self.perceptual_weight
-        else:
-            percep_loss = None
 
-        # calculate style loss
-        if self.style_weight > 0:
-            style_loss = 0
-            for k in x_features.keys():
-                if self.criterion_type == "fro":
-                    style_loss += (
-                        torch.norm(
-                            self._gram_mat(x_features[k])
-                            - self._gram_mat(gt_features[k]),
-                            p="fro",
-                        )
-                        * self.layer_weights[k]
-                    )
-                else:
-                    style_loss += (
-                        self.criterion(
-                            self._gram_mat(x_features[k]),
-                            self._gram_mat(gt_features[k]),
-                        )
-                        * self.layer_weights[k]
-                    )
-            style_loss *= self.style_weight
-        else:
-            style_loss = None
+        percep_loss = 0
+        for k in x_features.keys():
+            x_feat = x_features[k]
+            gt_feat = gt_features[k]
+            if weight is None:
+                loss = self.criterion(x_features[k], gt_features[k])
+            else:
+                loss = torch.abs(x_feat - gt_feat).mean()
+            percep_loss += loss
+        percep_loss *= self.perceptual_weight
 
-        return percep_loss, style_loss
+        return percep_loss, None
 
     def _gram_mat(self, x):
         """Calculate Gram matrix.
