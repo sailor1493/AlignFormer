@@ -1,8 +1,13 @@
+# Modified SRResNet w/o BN from:
+# Photo-Realistic Single Image Super-Resolution Using a Generative Adversarial Network
+
+# loss function: divided with the count of non-zero mask elements.
+
 # general settings
-name: UDCUNet-final
-model_type: UDCModel
+name: DISCNet-last-shot
+model_type: DISCNetModel
 scale: 1
-num_gpu: auto
+num_gpu: 4
 manual_seed: 10
 
 # dataset and data loader settings
@@ -13,6 +18,8 @@ datasets:
     dataroot_gt: datasets/iphone_dataset/AlignFormer/train/
     dataroot_ref: datasets/iphone_dataset/mask/train/
     dataroot_lq: datasets/iphone_dataset/lq/train/
+    psf_path: "/home/n2/chanwoo/benchmark-alignformer/AlignFormer/sit-train-psf.npy"
+
     meta_info_file: ~
     filename_tmpl: '{}'
     io_backend:
@@ -24,9 +31,9 @@ datasets:
 
     # data loader
     use_shuffle: true
-    num_worker_per_gpu: 4
-    batch_size_per_gpu: 8
-    dataset_enlarge_ratio: 50
+    num_worker_per_gpu: 16
+    batch_size_per_gpu: 4
+    dataset_enlarge_ratio: 10
     prefetch_mode: ~
 
   val:
@@ -35,27 +42,32 @@ datasets:
     dataroot_gt: datasets/iphone_dataset/AlignFormer/test_sub/
     dataroot_ref: datasets/iphone_dataset/mask/test_sub/
     dataroot_lq: datasets/iphone_dataset/lq/test_sub/
+    psf_path: "/home/n2/chanwoo/benchmark-alignformer/AlignFormer/sit-train-psf.npy"
+
     filename_tmpl: '{}'
     io_backend:
       type: disk
 
-#### network structures
+# network structures
 network_g:
-  type: UDCUNet
+  type: DISCNet
+  in_nc: 3
+  out_nc: 3
   nf: 32
-  depths: [2,2,2,8,2,2,2]
-  DyK_size: 3
+  ns: 3
+  multi_scale: true
+  kernel_cond: img-psf
+  psf_nc: 5
+  kpn_sz: 5
 
 # path
 path:
-  pretrain_network_g: ~
-#  param_key_g: 'params_ema'
-  strict_load_g: true
+  pretrain_model_g: ~
+  strict_load: true
   resume_state: ~
 
 # training settings
 train:
-  ema_decay: 0.999
   optim_g:
     type: Adam
     lr: !!float 2e-4
@@ -64,17 +76,28 @@ train:
 
   scheduler:
     type: CosineAnnealingRestartLR
-    periods: [50000, 100000, 150000, 150000, 150000, 150000, 150000]
-    restart_weights: [ 1, 1, 1, 1, 1, 1, 1]
+    periods: [200000, 200000, 200000, 200000, 200000]
+    restart_weights: [1, 1, 1, 1, 1]
     eta_min: !!float 1e-7
 
-  total_iter: 600000
+  total_iter: 1000000
   warmup_iter: -1  # no warm up
 
   # losses
   pixel_opt:
     type: L1Loss
-
+    loss_weight: !!float 1.0
+    reduction: mean
+  perceptual_opt:
+    type: PerceptualLoss
+    layer_weights:
+      'conv5_4': 1  # before relu
+    vgg_type: vgg19
+    use_input_norm: true
+    perceptual_weight: !!float 1e-2
+    style_weight: 0
+    range_norm: false
+    criterion: l1
 
 # validation settings
 val:
@@ -95,7 +118,6 @@ val:
 logger:
   print_freq: 250
   save_checkpoint_freq: !!float 5e4
-
   use_tb_logger: true
   wandb:
     project: ~
@@ -104,4 +126,4 @@ logger:
 # dist training settings
 dist_params:
   backend: nccl
-  port: 29500
+  port: 29015

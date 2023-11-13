@@ -1,5 +1,5 @@
 # general settings
-name: ECFNet-AlignFormer
+name: ECFNet-AlignFormer-Final
 model_type: ECFNetModel
 scale: 1
 num_gpu: auto
