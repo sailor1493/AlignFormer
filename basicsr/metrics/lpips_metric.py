@@ -8,10 +8,7 @@ from basicsr.metrics.metric_util import reorder_image
 from basicsr.utils import img2tensor
 
 
-def calculate_lpips(img1,
-                    img2,
-                    crop_border,
-                    input_order='HWC'):
+def calculate_lpips(img1, img2, crop_border, mask=None, input_order="HWC"):
     """Calculate LPIPS metric.
 
     We use the official params estimated from the pristine dataset.
@@ -32,12 +29,14 @@ def calculate_lpips(img1,
         float: LPIPS result.
     """
 
-    assert img1.shape == img2.shape, (
-        f'Image shapes are differnet: {img1.shape}, {img2.shape}.')
-    if input_order not in ['HWC', 'CHW']:
+    assert (
+        img1.shape == img2.shape
+    ), f"Image shapes are differnet: {img1.shape}, {img2.shape}."
+    if input_order not in ["HWC", "CHW"]:
         raise ValueError(
-            f'Wrong input_order {input_order}. Supported input_orders are '
-            '"HWC" and "CHW"')
+            f"Wrong input_order {input_order}. Supported input_orders are "
+            '"HWC" and "CHW"'
+        )
     img1 = reorder_image(img1, input_order=input_order)
     img2 = reorder_image(img2, input_order=input_order)
     img1 = img1.astype(np.float64)
@@ -56,10 +55,10 @@ def calculate_lpips(img1,
     img2 = img2.unsqueeze(0)
 
     # image should be RGB, IMPORTANT: normalized to [-1,1]
-    img1 = (img1 / 255. - 0.5) * 2
-    img2 = (img2 / 255. - 0.5) * 2
+    img1 = (img1 / 255.0 - 0.5) * 2
+    img2 = (img2 / 255.0 - 0.5) * 2
 
-    loss_fn_alex = lpips.LPIPS(net='alex', verbose=False)  # best forward scores
+    loss_fn_alex = lpips.LPIPS(net="alex", verbose=False)  # best forward scores
 
     metric = loss_fn_alex(img1, img2).squeeze(0).float().detach().cpu().numpy()
     return metric.mean()
