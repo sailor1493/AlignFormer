@@ -2,7 +2,6 @@ addict
 future
 lmdb
 matplotlib
-mmcv-full
 numpy
 opencv-python
 pyyaml
@@ -14,7 +13,6 @@ torchvision
 yapf
 rawpy
 imageio
-cv2
 cupy
 lpips
 torchinfo
