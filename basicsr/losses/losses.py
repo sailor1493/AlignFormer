@@ -86,17 +86,16 @@ class ECFNetLoss(nn.Module):
 
         if weight is not None:
             weight_sum = weight.sum()
-            charbonnier_loss = self.rd_func(
-                torch.sqrt((pred - target) ** 2 + self.eps) * weight
-            )
+            content_loss = torch.pow(pred - target, 2) * weight
             if weight_sum < 1e-3:
-                charbonnier_loss = charbonnier_loss.mean()
+                content_loss = content_loss.mean()
             else:
-                charbonnier_loss = charbonnier_loss / weight_sum
+                content_loss = content_loss.sum() / weight_sum
         else:
-            charbonnier_loss = torch.sqrt((pred - target) ** 2 + self.eps).mean()
+            content_loss = torch.pow(pred - target, 2).mean()
+        content_loss = torch.sqrt(content_loss + self.eps**2)
 
-        return self.loss_weight * (charbonnier_loss + self.lambda_value * freq_domain)
+        return self.loss_weight * (content_loss + self.lambda_value * freq_domain)
 
 
 @LOSS_REGISTRY.register()

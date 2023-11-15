@@ -1,5 +1,5 @@
 # general settings
-name: SR_Pretrain_clip
+name: SR_Pretrain_clip_final
 folder_suffix: SRGAN
 model_type: SRModel
 scale: 1
