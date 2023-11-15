@@ -1,5 +1,7 @@
 # README
 
+USE pytorch 2.0.1 -> mmcv 1.7.1 does not work with torch 2.1.0
+
 REFER THIS: [install cupy](https://docs.cupy.dev/en/stable/install.html)
 
 
