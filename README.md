@@ -1,3 +1,8 @@
+# README
+
+REFER THIS: [install cupy](https://docs.cupy.dev/en/stable/install.html)
+
+
 # AlignFormer: Generating Aligned Pseudo-Supervision from Non-Aligned Data for Image Restoration in Under-Display Camera
 
 ![Python 3.7](https://img.shields.io/badge/python-3.7-green.svg?style=plastic)

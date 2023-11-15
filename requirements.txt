@@ -19,3 +19,4 @@ cupy
 lpips
 torchinfo
 torchsummaryX
+cupy
